@@ -44,6 +44,11 @@ class ClientInterface:
                 print(err)
                 return False, "Unknown Error"
 
+    def makeorder(self, fulladdress, basket):
+        try:
+            return True
+        except:
+            return False
 
 daemon = Pyro4.Daemon()  # make a Pyro daemon
 ns = Pyro4.locateNS()  # find the name server

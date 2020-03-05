@@ -24,8 +24,6 @@ def displayRestruant(restruant):
     menu.wait()
     dist = dist.value
     menu = list(menu.value)
-    print(dist)
-    print(menu)
     if not menu:
         print(f"There was a server error while looking for the menu for {restruant}, please try again")
         return False
@@ -51,19 +49,35 @@ def displayRestruant(restruant):
                 else:
                     print(f"Adding {menu[inp-1][0]} to your basket!")
                     global basket
-                    basket.append(menu[inp-1]+[restruant])
+                    basket.append(list(menu[inp-1])+[restruant])
                     print("Now returning to menu...")
                     print("         ---")
             except ValueError:
                 print(f"{inp} is not a valid input, please try again...")
 
-def displayCheckout():
-    pass
+def displayCheckout(total):
+    global basket
+    while True:
+        restruants = set(item[3] for item in basket)
+        print(f"You are about to make an order to the following restruants: {', '.join(restruants)}.")
+        print(f"Total Cost: £{total}")
+        print(f"Delivery Address: {address}, {postcode}")
+        print("Type \"CONFIRM\" to confirm your purchase or \"BACK\" To return to main menu")
+        inp = input("Input: ")
+        if inp == "CONFIRM":
+            print("Great! Making order now...")
+            if Interface.makeorder(f"{address}, {postcode}", basket):
+                print("Order successfully made! Returning you to main menu.")
+                orders.append((f"{address}, {postcode}", basket))
+            else:
+                print("Oh dear, the order failed! I swear this hasn't happened before! Uh, just, um, can we try again?")
+        elif inp == "BACK":
+            return False
 
 def displayBasket():
     global basket
     if not basket:
-        print("Your basket is empty! Come back when you have added some tasy food!")
+        print("Your basket is empty! Come back when you have added some tasty food!")
         return False
     while True:
         print("Your basket contains the following items!")
@@ -86,7 +100,7 @@ def displayBasket():
             if inp == "BACK":
                 return False
             elif inp == "CHECKOUT":
-                displayCheckout()
+                displayCheckout(total)
                 return False
             else:
                 print(f"{inp} is not a valid input, please try again. This time, maybe do it right?")
@@ -111,13 +125,14 @@ orders = []
 getRestruants()
 
 while True:
+    print()
+    print("-- MAIN MENU --")
     print("The following options are now avaliable: ")
-    print(f"Input a number between 1 and {len(restruants)} in order to select the restruant listed above")
+    print(f"Input a number between 1 and {len(restruants)} in order to select the restruant listed above and add items to your basket")
     print("Input \"RELIST\" to get the list of restruants from the server again")
     print("Input \"REENTER\" to re-enter your address information")
-    print("INPUT \"BASKET\" to view your current basket")
+    print("INPUT \"BASKET\" to view your current basket or make an order")
     print("Input \"ORDERS\" to view existing orders")
-    print("INPUT \"CHECKOUT\" to go to checkout with your current basket")
     print("Input \"QUIT\" to quit Just Hungry")
     inp = input("Type Input Here: ")
 
@@ -140,6 +155,8 @@ while True:
             displayBasket()
         elif inp == "ORDERS":
             displayOrders()
+        elif inp == "CHECKOUT":
+            displayCheckout()
         elif inp == "QUIT":
             print("We hope you had a good time using Just Hungry, and we look forward to seeing you again!")
             print("Now exiting program...")
