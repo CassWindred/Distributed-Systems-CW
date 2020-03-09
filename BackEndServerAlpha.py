@@ -1,4 +1,5 @@
 import Pyro4
+import Pyro4.errors
 import asyncio
 
 
@@ -24,17 +25,18 @@ class Restruant:
         return menudict
 
 
-class Order:
-    def __init__(self, name, address, basket):
+class User:
+    def __init__(self, name):
         self.name = name
-        self.address = address
-        self.restruant = basket
+        self.orders = []
+        self.address = None
 
 
 class DataState:
 
     def __init__(self):
-        self.orders = []
+        self.users = {}
+        self.orders = {}
         self.restruants = {}
 
         menu = [MenuItem("Cod Fillet", 9.99, ["Gluten-Free", "Pescatarian"]),
@@ -62,8 +64,11 @@ class DataState:
         addr = "Keswick CA12 4TP"
         self.restruants["Cthulu's Hearth"] = Restruant("Cthulu's Hearth", menu, addr)
 
-
-currData = DataState()
+    def serialiseusers(self):
+        userlist = []
+        for user in self.users.values():
+            userlist.append((user.name, user.orders, user.address))
+        return userlist
 
 
 @Pyro4.expose
@@ -82,9 +87,11 @@ class Interface:
     def getaddress(self, restruant):
         return currData.restruants[restruant].address
 
-    def makeorder(self, name, address, basket):
+    def makeorder(self, name, address, basket, time):
         try:
-            currData.orders.append(Order(name, address, basket))
+            if not name in currData.orders:
+                currData.orders[name] = []
+            currData.users[name].orders.append((name, address, basket, time))
             return True
         except:
             return False
@@ -92,11 +99,52 @@ class Interface:
     def ping(self):
         return True
 
+    def getuserorders(self, name):
+        if name not in currData.users:
+            currData.users[name] = User(name)
+        return currData.users[name].orders
+
+    @Pyro4.oneway
+    def initialisebackupinterfaces(self):
+        initbackups()
+
+
+@Pyro4.expose
+class UpdateInterface:
+    def updateorders(self, neworders):
+        currData.orders = neworders
+
+    def updateusers(self, newusers):
+        currData.users = {}
+        for user in newusers:
+            currData.users[user[0]] = User(user[0])
+            currData.users[user[0]].orders = user[1]
+            currData.users[user[0]].address = user[2]
+
+
+def initbackups():
+    for backup in backupnames:
+        try:
+            interface = Pyro4.Proxy(backup)
+            interface._pyroBind()
+            workingbackups.append(interface)
+        except Pyro4.errors.CommunicationError as err:
+            print(f"Backup Interface: {backup} is not working, error: {err}")
+        except Pyro4.errors.NamingError:
+            print(f"Backup Interface: {backup} is not recognised by the nameserver, likely is not running")
+
+
+backupnames = ["PYRONAME:back.updateinterface.beta", "PYRONAME:back.updateinterface.gamma"]
+workingbackups = []
+
+currData = DataState()
 
 daemon = Pyro4.Daemon()  # make a Pyro daemon
 ns = Pyro4.locateNS()  # find the name server
 uri = daemon.register(Interface)  # register the greeting maker as a Pyro object
 ns.register("back.interface.alpha", uri)  # register the object with a name in the name server
+uri = daemon.register(UpdateInterface)
+ns.register("back.updateinterface.alpha", uri)
 
-print("Ready.")
+print("Backend Alpha Ready.")
 daemon.requestLoop()  # start the event loop of the server to wait for calls

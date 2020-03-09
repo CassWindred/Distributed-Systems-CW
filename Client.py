@@ -2,6 +2,7 @@ import Pyro4
 import Pyro4.errors
 import sys
 import math
+import time
 
 Pyro4.config.COMMTIMEOUT = 5 #Setting Timeout to 5 Seconds
 
@@ -94,9 +95,10 @@ def displayCheckout(total):
         if inp == "CONFIRM":
             name = input("Confirming order, please enter your full name: ")
             print("Great! Making order now...")
-            if Interface.makeorder(name, f"{address}, {postcode}", basket):
+            timestr = time.asctime(time.localtime())
+            if Interface.makeorder(name, f"{address}, {postcode}", basket, timestr):
                 print("Order successfully made! Returning you to main menu.")
-                orders.append((f"{address}, {postcode}", basket))
+                orders.append((f"{address}, {postcode}", basket, timestr))
                 return True
             else:
                 print("Oh dear, the order failed! I swear this hasn't happened before! Uh, just, um, can we try again?")
@@ -142,6 +144,9 @@ def displayOrders():
         print("You haven't made any orders yet :'( ")
         print("Come back once you have ordered some delicious food!")
         print()
+    else:
+        print("Here are your orders: ")
+
 
 
 Interface = Pyro4.Proxy("PYRONAME:front.interface")  # use name server object lookup uri shortcut
@@ -149,9 +154,9 @@ Interface = Pyro4.Proxy("PYRONAME:front.interface")  # use name server object lo
 print("                                   Welcome to Just Hungry!")
 print("-The premiere food delivery service for command line entheusiasts who love installing python modules!-")
 print()
-name = input("To start with, please input your name: ")
+name = "Cass" #input("To start with, please input your name: ")
 address = "35 The Moor Melbourn"  # input("Now please input your address, not including postcode: ")
-postcode = "SG8 6ED"  # input("Now input your postcode: ")
+postcode = "SG86ED"  # input("Now input your postcode: ")
 print("Checking postcode...")
 try:
     while not Interface.checkpostcode(postcode):
@@ -161,11 +166,12 @@ except ConnectionError as err:
         print("Postcode Validation Failed, proceeding without validation...")
 except Pyro4.errors.CommunicationError as err:
     print("Error communicating with server, proceeding without validation...")
+    print(err)
 print("Postcode Accepted")
 
 restruants = []
 basket = []
-orders = []
+orders = Interface.getuserorders
 try:
     getRestruants()
 except Pyro4.errors.CommunicationError as err:
