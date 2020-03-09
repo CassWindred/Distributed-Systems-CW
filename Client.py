@@ -1,6 +1,9 @@
 import Pyro4
+import Pyro4.errors
 import sys
 import math
+
+Pyro4.config.COMMTIMEOUT = 5 #Setting Timeout to 5 Seconds
 
 
 def round_sig(x, sig=2):
@@ -15,6 +18,10 @@ def rep_time(secs):
         return f"{hours} hour{'s' if hours >= 2 else ''}{f' and {mins} minutes' if mins > 0 else ''}"
     else:
         return f'{mins} minutes'
+
+
+def rep_money(amount):
+    return format(float(amount), '0.2f')
 
 
 def getRestruants():
@@ -55,7 +62,7 @@ def displayRestruant(restruant):
             print("This restruant has the following menu items avaliable: ")
             for i in range(len(menu)):
                 item = menu[i]
-                print(f"{i + 1}: {item[0]}, £{item[1]} ({', '.join(item[2])})")
+                print(f"{i + 1}: {item[0]}, £{rep_money(item[1])} ({', '.join(item[2])})")
             print(
                 "Please enter the number of an item you would like to add to your basket or \"BACK\" to return to main menu")
             inp = input("Input: ")
@@ -80,7 +87,7 @@ def displayCheckout(total):
     while True:
         restruants = set(item[3] for item in basket)
         print(f"You are about to make an order to the following restruants: {', '.join(restruants)}.")
-        print(f"Total Cost: £{total}")
+        print(f"Total Cost: £{rep_money(total)}")
         print(f"Delivery Address: {address}, {postcode}")
         print("Type \"CONFIRM\" to confirm your purchase or \"BACK\" To return to main menu")
         inp = input("Input: ")
@@ -90,6 +97,7 @@ def displayCheckout(total):
             if Interface.makeorder(name, f"{address}, {postcode}", basket):
                 print("Order successfully made! Returning you to main menu.")
                 orders.append((f"{address}, {postcode}", basket))
+                return True
             else:
                 print("Oh dear, the order failed! I swear this hasn't happened before! Uh, just, um, can we try again?")
         elif inp == "BACK":
@@ -105,9 +113,9 @@ def displayBasket():
         print("Your basket contains the following items!")
         total = 0.0
         for i in range(len(basket)):
-            print(f"{i + 1} - {basket[i][0]}, £{basket[i][1]} (From {basket[i][3]})")
+            print(f"{i + 1} - {basket[i][0]}, £{rep_money(basket[i][1])} (From {basket[i][3]})")
             total += basket[i][1]
-        print(f"This comes to a total of £{total}")
+        print(f"This comes to a total of £{rep_money(total)}")
         print()
         print(
             "Please enter a number to remove an item from your basket, type \"BACK\" to return to main menu, or type \"CHECKOUT\" to go to checkout with your current basket")
@@ -141,51 +149,79 @@ Interface = Pyro4.Proxy("PYRONAME:front.interface")  # use name server object lo
 print("                                   Welcome to Just Hungry!")
 print("-The premiere food delivery service for command line entheusiasts who love installing python modules!-")
 print()
-address = "35 The Moor Melbourn"  # input("To start with, please input your address, not including postcode: ")
+name = input("To start with, please input your name: ")
+address = "35 The Moor Melbourn"  # input("Now please input your address, not including postcode: ")
 postcode = "SG8 6ED"  # input("Now input your postcode: ")
+print("Checking postcode...")
+try:
+    while not Interface.checkpostcode(postcode):
+        postcode = input("Postcode invalid, please input a valid postcode: ")
+except ConnectionError as err:
+    if err == "Postcode Validation Failed":
+        print("Postcode Validation Failed, proceeding without validation...")
+except Pyro4.errors.CommunicationError as err:
+    print("Error communicating with server, proceeding without validation...")
+print("Postcode Accepted")
+
 restruants = []
 basket = []
 orders = []
-getRestruants()
+try:
+    getRestruants()
+except Pyro4.errors.CommunicationError as err:
+    if err is Pyro4.errors.TimeoutError:
+        print("Connection with the server timed out, please ensure it is running...")
+    else:
+        print("Error communicating with server...")
+    sys.exit()
 
 while True:
-    print()
-    print("-- MAIN MENU --")
-    print("The following options are now avaliable: ")
-    print(
-        f"Input a number between 1 and {len(restruants)} in order to select the restruant listed above and add items to your basket")
-    print("Input \"RELIST\" to get the list of restruants from the server again")
-    print("Input \"REENTER\" to re-enter your address information")
-    print("INPUT \"BASKET\" to view your current basket or make an order")
-    print("Input \"ORDERS\" to view existing orders")
-    print("Input \"QUIT\" to quit Just Hungry")
-    inp = input("Type Input Here: ")
-
     try:
-        inp = int(inp)
-        if inp > len(restruants) or inp < 1:
-            print(f"{inp} is not a valid restruant, please enter a number between 1 and {len(restruants)}")
-            break
-        else:
-            displayRestruant(restruants[inp - 1])
-    except ValueError:
-        if inp == "RELIST":
-            getRestruants()
-        elif inp == "REENTER":
-            address = input("Please enter address, not including postcode: ")
-            postcode = input("Please enter postcode: ")
-            print("Great! Returning to main menu...")
-            print()
-        elif inp == "BASKET":
-            displayBasket()
-        elif inp == "ORDERS":
-            displayOrders()
-        elif inp == "CHECKOUT":
-            displayCheckout()
-        elif inp == "QUIT":
-            print("We hope you had a good time using Just Hungry, and we look forward to seeing you again!")
-            print("Now exiting program...")
+        print()
+        print("-- MAIN MENU --")
+        print("The following options are now avaliable: ")
+        print(
+            f"Input a number between 1 and {len(restruants)} in order to select the restruant listed above and add items to your basket")
+        print("Input \"RELIST\" to get the list of restruants from the server again")
+        print("Input \"REENTER\" to re-enter your address information")
+        print("INPUT \"BASKET\" to view your current basket or make an order")
+        print("Input \"ORDERS\" to view existing orders")
+        print("Input \"QUIT\" to quit Just Hungry")
+        inp = input("Type Input Here: ")
+
+        try:
+            inp = int(inp)
+            if inp > len(restruants) or inp < 1:
+                print(f"{inp} is not a valid restruant, please enter a number between 1 and {len(restruants)}")
+                break
+            else:
+                displayRestruant(restruants[inp - 1])
+        except ValueError:
+            if inp == "RELIST":
+                getRestruants()
+            elif inp == "REENTER":
+                address = input("Please enter address, not including postcode: ")
+                postcode = input("Please enter postcode: ")
+                print("Great! Returning to main menu...")
+                print()
+            elif inp == "BASKET":
+                displayBasket()
+            elif inp == "ORDERS":
+                displayOrders()
+            elif inp == "QUIT":
+                print("We hope you had a good time using Just Hungry, and we look forward to seeing you again!")
+                print("Now exiting program...")
+                sys.exit()
+            else:
+                print(
+                    f"Uh oh! \"{inp}\" is not a valid option, returning you to main menu, next time, make better choices!")
+    except Pyro4.errors.TimeoutError:
+        print("Connection to server Timed Out, returning to main menu")
+    except Pyro4.errors.ConnectionClosedError:
+        print("The connection to the server unexpectedly closed, attempting to reconnect...")
+        try:
+            Interface._pyroReconnect(50)
+            print("Reconnect Successful, returning you to main menu")
+        except Pyro4.errors.PyroError:
+            print("Reconnect Failed, this error is not recoverable, ending program...")
             sys.exit()
-        else:
-            print(
-                f"Uh oh! \"{inp}\" is not a valid option, returning you to main menu, next time, make better choices!")

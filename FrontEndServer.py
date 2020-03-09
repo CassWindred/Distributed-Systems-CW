@@ -57,14 +57,30 @@ def distanceAPIcall(address1, address2):
         resource = response["resourceSets"][0]["resources"][0]
         return resource['travelDistance'], resource['travelDurationTraffic']
 
+def checkPostcode(postcode):
+    url = f"api.postcodes.io/postcodes/{postcode}/validate:"
+    response = json.loads(requests.request("GET", url).text)
+    if response.status == "200":
+        if response.result == "true":
+            return True
+        elif response.result == "false":
+            return False
+    else:
+        raise ConnectionError("Postcode Validation Failed")
 
-# print(getdistance("12 Percy Square, Durham, DH1 3PZ", "86 Fuckyou Fuckenu, Fuckslyvania, Fuck, 123 123"))
+
+
 def safeRun(func, args):
     for i in range(UPDATE_ATTEMPTS):
         try:
             return func(*args)
-        except ConnectionError:
-            updateInterfaces(currInterface)
+        except Pyro4.errors.CommunicationError as err:
+            try:
+                currInterface._pyroReconnect(3)
+            except Pyro4.errors.PyroError:
+                updateInterfaces(currInterface)
+    print("Failed to run function with any avaliable interface, this error is unrecoverable, exiting now...")
+    sys.exit()
 
 
 
@@ -87,6 +103,9 @@ class ClientInterface:
             else:
                 print(err)
                 return False, "Unknown Error"
+
+    def checkpostcode(self, postcode):
+        return checkPostcode(postcode)
 
     def makeorder(self, name, fulladdress, basket):
         try:
