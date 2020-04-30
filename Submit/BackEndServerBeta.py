@@ -99,7 +99,6 @@ class Interface:
             return False
 
     def ping(self):
-        print("Ping received, returning!")
         return True
 
     def getuserorders(self, name):
@@ -113,7 +112,6 @@ class Interface:
         initbackups()
 
 
-
 @Pyro4.expose
 class UpdateInterface:
 
@@ -121,7 +119,6 @@ class UpdateInterface:
         print("Users being updated")
         currData.users = {}
         for user in newusers:
-            print(user)
             currData.users[user[0]] = User(user[0])
             currData.users[user[0]].orders = user[1]
             currData.users[user[0]].address = user[2]
@@ -160,8 +157,7 @@ def tryupdate(methname, args):
     if updatebackups:
         initbackups()
 
-
-backupnames = ["PYRONAME:back.updateinterface.beta", "PYRONAME:back.updateinterface.gamma"]
+backupnames = ["PYRONAME:back.updateinterface.alpha", "PYRONAME:back.updateinterface.gamma"]
 workingbackups = []
 
 currData = DataState()
@@ -169,9 +165,9 @@ currData = DataState()
 daemon = Pyro4.Daemon()  # make a Pyro daemon
 ns = Pyro4.locateNS()  # find the name server
 uri = daemon.register(Interface)  # register the greeting maker as a Pyro object
-ns.register("back.interface.alpha", uri)  # register the object with a name in the name server
+ns.register("back.interface.beta", uri)  # register the object with a name in the name server
 uri = daemon.register(UpdateInterface)
-ns.register("back.updateinterface.alpha", uri)
+ns.register("back.updateinterface.beta", uri)
 
-print("Backend Alpha Ready.")
+print("Backend Beta Ready.")
 daemon.requestLoop()  # start the event loop of the server to wait for calls
