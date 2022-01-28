@@ -1,4 +1,5 @@
 # Distributed-Systems-CW
+This project was done as coursework at Durham University, and simulates a distributed system for ordering food with redundant servers.
 ## Requirements:
 The program was written using Python 3.8, and requires the Pyro4 python library.
 ## Running The Program
